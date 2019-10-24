@@ -102,6 +102,18 @@ Geometry* Program::createPoint(float x, float y, glm::vec3 color = glm::vec3(1, 
 	return point;
 }
 
+Geometry* Program::createLine(double x1, double y1, double x2, double y2, glm::vec3 color = glm::vec3(0, 1, 1)) {
+
+	Geometry* line = new Geometry(GL_LINE_STRIP);
+	line->color = color;
+	line->verts.push_back(glm::vec3(x1, y1, 0.f));
+	line->verts.push_back(glm::vec3(x2, y2, 0.f));
+	renderEngine->assignBuffers(*line);
+	renderEngine->updateBuffers(*line);
+	geometryObjects.push_back(line);
+	return line;
+}
+
 void Program::updateKnotValues(int m, int k) {
 	Program::U.clear();
 	for (int i = 0; i < k; i++) {
@@ -136,6 +148,9 @@ std::pair<double, double> Program::E_delta_1(double u, int k, int m) {
 	for (int r = k; r >= 2; r--) {
 		int i = d;
 		for (int s = 0; s <= r - 2; s++) {
+			if (true && abs(u_animate - u) < (u_inc/2.0)) {
+				Program::createLine(C[s].first, C[s].second, C[s + 1].first, C[s + 1].second);
+			}
 			double omega = (u - Program::U[i]) / (Program::U[i + r - 1] - Program::U[i]);
 			C[s].first = omega * C[s].first + (1 - omega) * C[s + 1].first;
 			C[s].second = omega * C[s].second + (1 - omega) * C[s + 1].second;
@@ -160,7 +175,6 @@ Geometry* Program::createCurve(glm::vec3 color = glm::vec3(0, 1, 0)) {
 	geometryObjects.push_back(curve);
 	return curve;
 }
-
 
 void Program::drawUI() {
 	// Start the Dear ImGui frame
@@ -208,7 +222,7 @@ void Program::mainLoop() {
 	//createPoint(-10, 10);
 	order = 4;
 	u_inc = 0.001;
-	u_animate = 0;
+	u_animate = 0.5;
 	int move_index = -1;
 	
 	// Our state
@@ -272,7 +286,7 @@ void Program::mainLoop() {
 			float y = 10.0 - InputHandler::mouseOldY * factor;
 			Program::controlPoints[move_index].first = x;
 			Program::controlPoints[move_index].second = y;
-			std::cout << InputHandler::mouseOldX << " , " << InputHandler::mouseOldY << std::endl;
+			//std::cout << InputHandler::mouseOldX << " , " << InputHandler::mouseOldY << std::endl;
 			if (!InputHandler::hold) {
 				std::cout << "mouse released" << std::endl;
 				move_index = -1;

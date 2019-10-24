@@ -52,5 +52,6 @@ private:
 	void createTestGeometryObject();
 	void createTestGeometryObject1();
 	Geometry* createPoint(float x, float y, glm::vec3 color);
-	Geometry* Program::createCurve(glm::vec3 color);
+	Geometry* createCurve(glm::vec3 color);
+	Geometry* createLine(double x1, double y1, double x2, double y2, glm::vec3 color);
 };
