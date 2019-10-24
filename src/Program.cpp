@@ -102,15 +102,58 @@ Geometry* Program::createPoint(float x, float y, glm::vec3 color = glm::vec3(1, 
 	return point;
 }
 
-Geometry* Program::createCurve(Geometry* p0, Geometry* p1, Geometry* p2, glm::vec3 color = glm::vec3(0, 1, 0)) {
+void Program::updateKnotValues(int m, int k) {
+	Program::U.clear();
+	for (int i = 0; i < k; i++) {
+		Program::U.push_back(0.0);
+	}
+	double step = 1.0 / m - k + 2;
+	for (int i = 0; i < m - k + 2; i++) {
+		Program::U.push_back(Program::U.back() + step);
+	}
+	for (int i = 0; i < k; i++) {
+		Program::U.push_back(1.0);
+	}
+}
+
+int Program::delta(double u, int k, int m) {
+	// m = number of control points - 1
+	// k = order
+	for (int i = 0; i < m + k; i++) {
+		if (u > Program::U[i] && u < Program::U[i + 1]) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+std::pair<float, float> Program::E_delta_1(double u, int k, int m) {
+	int d = Program::delta(u, k, m);
+	std::vector<std::pair<float, float>> C;
+	for (int i = 0; i < k; i++) {
+		C.push_back(Program::controlPoints[d - i]);
+	}
+	for (int r = k; r >= 2; r--) {
+		int i = d;
+		for (int s = 0; s <= r - 2; s++) {
+			double omega = (u - Program::U[i]) / (Program::U[i + r - 1] - Program::U[i]);
+			C[s].first = omega * C[s].first + (1 - omega)*C[s + 1].first;
+			C[s].second = omega * C[s].second + (1 - omega)*C[s + 1].second;
+			i--;
+		}
+	}
+	return C[0];
+}
+
+Geometry* Program::createCurve(glm::vec3 color = glm::vec3(0, 1, 0)) {
+	if (Program::controlPoints.size() < order) {
+		return NULL;
+	}
 	Geometry* curve = new Geometry(GL_LINE_STRIP);
 	curve->color = color;
 	for (double u = 0.0; u <= 1.0; u += 0.01) {
-		//double x = p0->verts[0][0] * (1 - u) * (1 - u) + p1->verts[0][0] * 2 * u * (1 - u) + p2->verts[0][0] * u * u;
-		//double y = p0->verts[0][1] * (1 - u) * (1 - u) + p1->verts[0][1] * 2 * u * (1 - u) + p2->verts[0][1] * u * u;
-		double x = p0->verts[0][0] + p1->verts[0][0] * u + p2->verts[0][0] * u * u;
-		double y = p0->verts[0][1] + p1->verts[0][1] * u + p2->verts[0][1] * u * u;
-		curve->verts.push_back(glm::vec3(x, y, 0.f));
+		std::pair<float, float> res = Program::E_delta_1(u, order, Program::controlPoints.size() - 1);
+		curve->verts.push_back(glm::vec3(res.first, res.second, 0.f));
 	}
 	renderEngine->assignBuffers(*curve);
 	renderEngine->updateBuffers(*curve);
@@ -136,7 +179,9 @@ void Program::drawUI() {
 		ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
 
 		//ImGui::SameLine();
-		//ImGui::Text("counter = %d", counter);
+		ImGui::InputInt("order", &order);
+		ImGui::SliderFloat("step size", &u_inc, 0.1f, 1.0f);
+		ImGui::SliderFloat("animation", &u_animate, 0.0f, 1.0f);
 	
 		if (ImGui::Button("Clean")) {                            // Buttons return true when clicked (most widgets return true when edited/activated)
 			geometryObjects.clear();
@@ -161,7 +206,9 @@ void Program::mainLoop() {
 	//createTestGeometryObject();
 	//createPoint(0, 0);
 	//createPoint(-10, 10);
-
+	order = 3;
+	u_inc = 0.1;
+	u_animate = 0;
 	
 	// Our state
 	show_test_window = false;
@@ -170,34 +217,34 @@ void Program::mainLoop() {
 		glfwPollEvents();
 		
 		while (InputHandler::clickedPositions.size() > 0) {
+			/**
 			if (geometryObjects.size() == 8) {
 				geometryObjects.clear();
-			}
+			}/**/
+
 			std::pair<int, int> point = InputHandler::clickedPositions.back();
 			InputHandler::clickedPositions.pop_back();
 			double factor = 20.0 / 750.0;
 			//std::cout << point.first << " : " << point.second << std::endl;
-			createPoint(point.first*factor - 10.0, 10.0 - point.second*factor);
+			float x = point.first*factor - 10.0;
+			float y = 10.0 - point.second*factor;
+			createPoint(x, y);
+			Program::controlPoints.push_back(std::make_pair(x, y));
+			Program::updateKnotValues(Program::controlPoints.size() - 1, order);
+		}
+		while (InputHandler::rightClickedPositions.size() > 0) {
+			std::pair<int, int> point = InputHandler::rightClickedPositions.back();
+			InputHandler::rightClickedPositions.pop_back();
+			double factor = 20.0 / 750.0;
+			//Do remore the control point
 		}
 
-		if (geometryObjects.size() == 3) {
-			Geometry* p0 = geometryObjects[0];
-			Geometry* p1 = geometryObjects[1];
-			Geometry* p2 = geometryObjects[2];
-			createCurve(p0, p1, p2);
+		createCurve();
 
-			double transform_x = 3;
-			double transform_y = -3;
-			Geometry* p0t = createPoint(p0->verts[0][0] + transform_x, p0->verts[0][1] + transform_y, glm::vec3(1, 1, 0));
-			Geometry* p1t = createPoint(p1->verts[0][0] + transform_x, p1->verts[0][1] + transform_y, glm::vec3(1, 1, 0));
-			Geometry* p2t = createPoint(p2->verts[0][0] + transform_x, p2->verts[0][1] + transform_y, glm::vec3(1, 1, 0));
-			createCurve(p0t, p1t, p2t, glm::vec3(0, 1, 1));
-		}
-
-		//drawUI();
+		drawUI();
 
 		// Rendering
-		//ImGui::Render();
+		ImGui::Render();
 		int display_w, display_h;
 		glfwGetFramebufferSize(window, &display_w, &display_h);
 		glViewport(0, 0, display_w, display_h);
@@ -206,7 +253,7 @@ void Program::mainLoop() {
 		glPointSize(5);
 
 		renderEngine->render(geometryObjects, glm::mat4(1.f));
-		//ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(window);
 	}

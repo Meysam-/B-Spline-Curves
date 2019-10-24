@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <vector>
+#include <utility>
 #include <math.h>
 
 #include "Geometry.h"
@@ -29,17 +30,27 @@ private:
 	RenderEngine* renderEngine;
 
 	std::vector<Geometry*> geometryObjects;
+	std::vector<std::pair<float, float>> controlPoints;
+	std::vector<double> U; //knot values
+	//std::vector<double> E; //control values
+	std::vector<std::pair<float, float>> E;//control values
 
 	bool show_test_window;
 	ImVec4 clear_color;
+
+	int order; //k
+	float u_animate, u_inc; //paramter increments
 
 	static void error(int error, const char* description);
 	void setupWindow();
 	void mainLoop();
 	void drawUI();
-
+	
+	int delta(double u, int order, int m);
+	std::pair<float, float> E_delta_1(double u, int order, int m);
+	void updateKnotValues(int m, int k);
 	void createTestGeometryObject();
 	void createTestGeometryObject1();
 	Geometry* createPoint(float x, float y, glm::vec3 color);
-	Geometry* Program::createCurve(Geometry* p0, Geometry* p1, Geometry* p2, glm::vec3 color);
+	Geometry* Program::createCurve(glm::vec3 color);
 };

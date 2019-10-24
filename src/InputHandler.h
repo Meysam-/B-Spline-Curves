@@ -15,6 +15,7 @@ public:
 	static int mouseOldX;
 	static int mouseOldY;
 	static std::vector<std::pair<int,int>> clickedPositions;
+	static std::vector<std::pair<int,int>> rightClickedPositions;
 
 	static void setUp(RenderEngine* renderEngine);
 
