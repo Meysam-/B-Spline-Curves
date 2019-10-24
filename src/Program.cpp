@@ -107,8 +107,8 @@ void Program::updateKnotValues(int m, int k) {
 	for (int i = 0; i < k; i++) {
 		Program::U.push_back(0.0);
 	}
-	double step = 1.0 / m - k + 2;
-	for (int i = 0; i < m - k + 2; i++) {
+	double step = 1.0 / (m - k + 2);
+	for (int i = 1; i < m - k + 2; i++) {
 		Program::U.push_back(Program::U.back() + step);
 	}
 	for (int i = 0; i < k; i++) {
@@ -120,16 +120,16 @@ int Program::delta(double u, int k, int m) {
 	// m = number of control points - 1
 	// k = order
 	for (int i = 0; i < m + k; i++) {
-		if (u > Program::U[i] && u < Program::U[i + 1]) {
+		if (u >= Program::U[i] && u < Program::U[i + 1]) {
 			return i;
 		}
 	}
 	return -1;
 }
 
-std::pair<float, float> Program::E_delta_1(double u, int k, int m) {
+std::pair<double, double> Program::E_delta_1(double u, int k, int m) {
 	int d = Program::delta(u, k, m);
-	std::vector<std::pair<float, float>> C;
+	std::vector<std::pair<double, double>> C;
 	for (int i = 0; i < k; i++) {
 		C.push_back(Program::controlPoints[d - i]);
 	}
@@ -137,8 +137,8 @@ std::pair<float, float> Program::E_delta_1(double u, int k, int m) {
 		int i = d;
 		for (int s = 0; s <= r - 2; s++) {
 			double omega = (u - Program::U[i]) / (Program::U[i + r - 1] - Program::U[i]);
-			C[s].first = omega * C[s].first + (1 - omega)*C[s + 1].first;
-			C[s].second = omega * C[s].second + (1 - omega)*C[s + 1].second;
+			C[s].first = omega * C[s].first + (1 - omega) * C[s + 1].first;
+			C[s].second = omega * C[s].second + (1 - omega) * C[s + 1].second;
 			i--;
 		}
 	}
@@ -151,7 +151,7 @@ Geometry* Program::createCurve(glm::vec3 color = glm::vec3(0, 1, 0)) {
 	}
 	Geometry* curve = new Geometry(GL_LINE_STRIP);
 	curve->color = color;
-	for (double u = 0.0; u <= 1.0; u += 0.01) {
+	for (double u = 0.0; u < 1.0; u += Program::u_inc) {
 		std::pair<float, float> res = Program::E_delta_1(u, order, Program::controlPoints.size() - 1);
 		curve->verts.push_back(glm::vec3(res.first, res.second, 0.f));
 	}
@@ -171,7 +171,7 @@ void Program::drawUI() {
 	// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
 	{
 
-		ImGui::Begin("Hello World!");                          // Create a window called "Hello, world!" and append into it.
+		ImGui::Begin("B-Spline!");                          // Create a window called "Hello, world!" and append into it.
 
 		//ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
 		//ImGui::Checkbox("Test Window", &show_test_window);      // Edit bools storing our window open/close state
@@ -180,14 +180,14 @@ void Program::drawUI() {
 
 		//ImGui::SameLine();
 		ImGui::InputInt("order", &order);
-		ImGui::SliderFloat("step size", &u_inc, 0.1f, 1.0f);
+		ImGui::SliderFloat("step size", &u_inc, 0.001f, 1.0f);
 		ImGui::SliderFloat("animation", &u_animate, 0.0f, 1.0f);
 	
 		if (ImGui::Button("Clean")) {                            // Buttons return true when clicked (most widgets return true when edited/activated)
-			geometryObjects.clear();
+			Program::controlPoints.clear();
 		}
 		ImGui::SameLine();
-		ImGui::Checkbox("Click me!", &show_test_window);
+		//ImGui::Checkbox("Click me!", &show_test_window);
 		ImGui::End();
 	}
 	// 3. Show another simple window.
@@ -206,8 +206,8 @@ void Program::mainLoop() {
 	//createTestGeometryObject();
 	//createPoint(0, 0);
 	//createPoint(-10, 10);
-	order = 3;
-	u_inc = 0.1;
+	order = 4;
+	u_inc = 0.001;
 	u_animate = 0;
 	
 	// Our state
@@ -216,29 +216,48 @@ void Program::mainLoop() {
 	while(!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		
-		while (InputHandler::clickedPositions.size() > 0) {
+		while (InputHandler::rightClickedPositions.size() > 0) {
 			/**
 			if (geometryObjects.size() == 8) {
 				geometryObjects.clear();
 			}/**/
 
-			std::pair<int, int> point = InputHandler::clickedPositions.back();
-			InputHandler::clickedPositions.pop_back();
+			std::pair<int, int> point = InputHandler::rightClickedPositions.back();
+			InputHandler::rightClickedPositions.pop_back();
 			double factor = 20.0 / 750.0;
 			//std::cout << point.first << " : " << point.second << std::endl;
 			float x = point.first*factor - 10.0;
 			float y = 10.0 - point.second*factor;
-			createPoint(x, y);
+
 			Program::controlPoints.push_back(std::make_pair(x, y));
-			Program::updateKnotValues(Program::controlPoints.size() - 1, order);
 		}
-		while (InputHandler::rightClickedPositions.size() > 0) {
-			std::pair<int, int> point = InputHandler::rightClickedPositions.back();
-			InputHandler::rightClickedPositions.pop_back();
+		while (InputHandler::clickedPositions.size() > 0) {
+			std::pair<int, int> point = InputHandler::clickedPositions.back();
+			InputHandler::clickedPositions.pop_back();
 			double factor = 20.0 / 750.0;
 			//Do remore the control point
+			double epsilon = 0.1;
+			int delete_index = -1;
+			float x = point.first * factor - 10.0;
+			float y = 10.0 - point.second * factor;
+			for (int i = 0; i < Program::controlPoints.size(); i++) {
+				if (abs(x - Program::controlPoints[i].first) < epsilon && abs(y - Program::controlPoints[i].second) < epsilon) {
+					delete_index = i;
+					break;
+				}
+			}
+			if (delete_index > -1){
+				Program::controlPoints.erase(Program::controlPoints.begin() + delete_index);
+			}
 		}
 
+		Program::updateKnotValues(Program::controlPoints.size() - 1, order);
+		geometryObjects.clear();
+		for (int i = 0; i < Program::controlPoints.size(); i++){
+			float x = Program::controlPoints[i].first;
+			float y = Program::controlPoints[i].second;
+			createPoint(x, y);
+		}
 		createCurve();
 
 		drawUI();

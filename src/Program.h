@@ -30,10 +30,10 @@ private:
 	RenderEngine* renderEngine;
 
 	std::vector<Geometry*> geometryObjects;
-	std::vector<std::pair<float, float>> controlPoints;
+	std::vector<std::pair<double, double>> controlPoints;
 	std::vector<double> U; //knot values
 	//std::vector<double> E; //control values
-	std::vector<std::pair<float, float>> E;//control values
+	std::vector<std::pair<double, double>> E;//control values
 
 	bool show_test_window;
 	ImVec4 clear_color;
@@ -47,7 +47,7 @@ private:
 	void drawUI();
 	
 	int delta(double u, int order, int m);
-	std::pair<float, float> E_delta_1(double u, int order, int m);
+	std::pair<double, double> E_delta_1(double u, int order, int m);
 	void updateKnotValues(int m, int k);
 	void createTestGeometryObject();
 	void createTestGeometryObject1();
