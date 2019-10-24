@@ -209,6 +209,7 @@ void Program::mainLoop() {
 	order = 4;
 	u_inc = 0.001;
 	u_animate = 0;
+	int move_index = -1;
 	
 	// Our state
 	show_test_window = false;
@@ -231,9 +232,9 @@ void Program::mainLoop() {
 
 			Program::controlPoints.push_back(std::make_pair(x, y));
 		}
-		while (InputHandler::clickedPositions.size() > 0) {
-			std::pair<int, int> point = InputHandler::clickedPositions.back();
-			InputHandler::clickedPositions.pop_back();
+		while (InputHandler::middleClickedPositions.size() > 0) {
+			std::pair<int, int> point = InputHandler::middleClickedPositions.back();
+			InputHandler::middleClickedPositions.pop_back();
 			double factor = 20.0 / 750.0;
 			//Do remore the control point
 			double epsilon = 0.1;
@@ -248,6 +249,33 @@ void Program::mainLoop() {
 			}
 			if (delete_index > -1){
 				Program::controlPoints.erase(Program::controlPoints.begin() + delete_index);
+			}
+		}
+		while (InputHandler::leftClickedPositions.size() > 0) {
+			std::pair<int, int> point = InputHandler::leftClickedPositions.back();
+			InputHandler::leftClickedPositions.pop_back();
+			double factor = 20.0 / 750.0;
+			double epsilon = 0.1;
+			float x = point.first * factor - 10.0;
+			float y = 10.0 - point.second * factor;
+			for (int i = 0; i < Program::controlPoints.size(); i++) {
+				if (abs(x - Program::controlPoints[i].first) < epsilon && abs(y - Program::controlPoints[i].second) < epsilon) {
+					move_index = i;
+					std::cout << "move index = " << i << std::endl;
+					break;
+				}
+			}
+		}
+		if (move_index != -1) {
+			double factor = 20.0 / 750.0;
+			float x = InputHandler::mouseOldX * factor - 10.0;
+			float y = 10.0 - InputHandler::mouseOldY * factor;
+			Program::controlPoints[move_index].first = x;
+			Program::controlPoints[move_index].second = y;
+			std::cout << InputHandler::mouseOldX << " , " << InputHandler::mouseOldY << std::endl;
+			if (!InputHandler::hold) {
+				std::cout << "mouse released" << std::endl;
+				move_index = -1;
 			}
 		}
 

@@ -14,8 +14,10 @@ class InputHandler {
 public:
 	static int mouseOldX;
 	static int mouseOldY;
-	static std::vector<std::pair<int,int>> clickedPositions;
+	static bool hold;
 	static std::vector<std::pair<int,int>> rightClickedPositions;
+	static std::vector<std::pair<int,int>> leftClickedPositions;
+	static std::vector<std::pair<int,int>> middleClickedPositions;
 
 	static void setUp(RenderEngine* renderEngine);
 
